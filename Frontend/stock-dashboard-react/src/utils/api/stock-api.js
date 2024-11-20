@@ -57,6 +57,20 @@ export const fetchQuote = async (stockSymbol) => {
   return await response.json();
 };
 
+
+export const fetchNews = async (category) => {
+  const url = `${basePath}/news?category=${category}&token=${process.env.REACT_APP_API_KEY}`;
+  const response = await fetch(url);
+  
+
+  if (!response.ok) {
+    const message = `An error has occured: ${response.status}`;
+    throw new Error(message);
+  }
+
+  return await response.json();
+};
+
 /**
  * Fetches historical data of a stock (to be displayed on a chart)
  * @param {string} stockSymbol - Symbol of the company, e.g. 'FB'

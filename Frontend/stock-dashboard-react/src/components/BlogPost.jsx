@@ -1,16 +1,20 @@
 import React from 'react';
 import { Calendar, Tag } from 'lucide-react';
 import TempImage from'../assets/news.jpg';
-export default function BlogPost({ title, excerpt, date, readTime, category, imageUrl, author }) {
+export default function BlogPost({ title, excerpt, date, readTime, category, imageUrl, author, articleLink }) {
   
 
   return (
-    <article className="bg-white rounded-xl shadow-md overflow-hidden transition-transform hover:scale-[1.02]">
+    <article className="bg-white rounded-xl cursor-pointer shadow-md overflow-hidden transition-transform hover:scale-[1.02]" onClick={() => window.open(articleLink)}>
       <div className="relative h-48 overflow-hidden">
-        <img 
-          src={imageUrl != null ? imageUrl : TempImage} 
-          alt={title} 
+      <img
+          src={imageUrl || TempImage}
+          alt={title || 'Default Image'}
           className="w-full h-full object-cover"
+          onError={(e) => {
+            e.target.onerror = null; // Prevent infinite loop
+            e.target.src = TempImage; // Set fallback image
+          }}
         />
         <div className="absolute top-4 right-4">
           <span className="px-3 py-1 bg-blue-600 text-white text-sm rounded-full flex items-center gap-1">

@@ -5,6 +5,7 @@
 1. ```git clone https://github.com/JayJoshi4520/Project-DATA236.git```
 2. ```cd Project-DATA236```
 
+
 ## Install Prerequisites for the Backend
 - ```pip install -r requirements.txt```
 
@@ -15,5 +16,10 @@
 1. ```cd Frontend```
 2. ```npm install```
 3. ```npm start```
+
+## Create .env file.
+- Get your Free Finnhub API key from [Finnhub.io](https://finnhub.io/)
+- Create ```.env``` file in ```Project-DATA236/Frontend``` directory.
+- Add REACT_APP_API_KEY = 'YOUR FINHUB API KEY'
 
 

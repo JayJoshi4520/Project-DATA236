@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { Search, TrendingUp, BookOpen, DollarSign, LineChart, Bitcoin } from 'lucide-react';
 import BlogPost from '../components/BlogPost';
 import { fetchNews } from '../utils/api/stock-api';
 import e from 'cors';
+import ThemeContext from '../context/ThemeContext';
 
 const categories = [
   { name: 'General', icon: LineChart },
@@ -16,6 +17,7 @@ export default function Blog() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('General');
   const [blogPosts, setNewsData] = useState([])
+  const { darkMode } = useContext(ThemeContext);
 
 
   useEffect(async () => {
@@ -59,6 +61,7 @@ export default function Blog() {
         readTime: '5 min read',
         category: item.category,
         imageUrl: item.image,
+        articleLink: item.url,
         author: {
           name: item.source,
           avatar:
@@ -84,18 +87,18 @@ export default function Blog() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className={`min-h-screen ${darkMode ? "bg-gray-900 text-gray-300" : "bg-neutral-100"}`}>
+      <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12`}>
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+          <h1 className={`text-4xl font-bold mb-4 ${darkMode ? "text-white" : "text-gray-900"}`}>
             Market Insights & Analysis
           </h1>
-          <p className="text-xl text-gray-600">
+          <p className="text-xl text-gray-500">
             Stay informed with the latest market trends, analysis, and trading strategies
           </p>
         </div>
 
-        <div className="mb-8">
+        {/* <div className="mb-8">
           <div className="relative max-w-xl mx-auto">
             <input
               type="text"
@@ -106,7 +109,7 @@ export default function Blog() {
             />
             <Search className="absolute left-4 top-3.5 text-gray-400" size={20} />
           </div>
-        </div>
+        </div> */}
 
         <div className="mb-12">
           <div className="flex flex-wrap justify-center gap-4">

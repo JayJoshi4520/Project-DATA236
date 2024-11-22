@@ -5,6 +5,7 @@ import Dashboard from "./components/Dashboard";
 import StockContext from "./context/StockContext";
 import ThemeContext from "./context/ThemeContext";
 import Blog from "./pages/Blog";
+import Header from "./components/TopHeader";
 
 
 function App() {
@@ -40,6 +41,7 @@ function App() {
   return (
     <ThemeContext.Provider value={{ darkMode, setDarkMode }}>
       <StockContext.Provider value={{ stockSymbol, setStockSymbol }}>
+        <Header/>
         <BrowserRouter>
           <Routes>
               <Route path="/" element={<Dashboard />} />

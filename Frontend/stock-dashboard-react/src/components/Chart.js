@@ -28,6 +28,8 @@ const Chart = () => {
 
   const [data, setData] = useState([]);
 
+  const [showPrediiton, setShowPrediction] = useState(false)
+
   const getTimeFromTimestamp = (timestamp) => {
     const date = new Date(timestamp);
     const hours = String(date.getUTCHours()).padStart(2, "0");
@@ -42,6 +44,7 @@ const Chart = () => {
     const day = String(date.getUTCDate()).padStart(2, "0");
     return `${year}-${month}-${day}`; 
   };
+
   const formatData = (liveData) => {
     return liveData.map((item, index) => {
 
@@ -57,6 +60,7 @@ const Chart = () => {
     });
   };
 
+
   useEffect(() => {
     const getDateRange = () => {
       const { days, weeks, months, years } = chartConfig[filter];
@@ -71,6 +75,7 @@ const Chart = () => {
 
     };
 
+    
 
 
     const updateChartData = async () => {

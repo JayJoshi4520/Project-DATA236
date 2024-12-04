@@ -4,8 +4,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Dashboard from "./components/Dashboard";
 import StockContext from "./context/StockContext";
 import ThemeContext from "./context/ThemeContext";
-import Blog from "./pages/Blog";
 import Header from "./components/TopHeader";
+import Blog from "./pages/Blog";
 
 
 function App() {
@@ -18,6 +18,8 @@ function App() {
     const localStock = localStorage.getItem("ticker");
     return localStock || "AAPL";
   });
+
+  const [showPrediction, setShowPrediction] = useState(true);
 
   useEffect(() => {
     try {
@@ -41,10 +43,10 @@ function App() {
   return (
     <ThemeContext.Provider value={{ darkMode, setDarkMode }}>
       <StockContext.Provider value={{ stockSymbol, setStockSymbol }}>
-        <Header/>
+        <Header onPredictionChange={setShowPrediction}/>
         <BrowserRouter>
           <Routes>
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/" element={<Dashboard showPrediction={showPrediction} />} />
               <Route path="/blog" element={<Blog />} />
           </Routes>
         </BrowserRouter>

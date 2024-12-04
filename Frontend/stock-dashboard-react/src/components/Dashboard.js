@@ -16,6 +16,7 @@ const Dashboard = () => {
 
   const [quote, setQuote] = useState({});
 
+  
   useEffect(() => {
     const updateStockDetails = async () => {
       try {

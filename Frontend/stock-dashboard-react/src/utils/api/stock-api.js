@@ -90,7 +90,7 @@ export const fetchHistoricalData = async (
   let interval = "1m"
   let stockPeriod = "1D"
   if(resolution === "1") {
-    interval = "1m"
+    interval = "5m"
     stockPeriod = "1D"
   }else if(resolution === "15"){
     interval = "1d"
@@ -103,6 +103,36 @@ export const fetchHistoricalData = async (
     stockPeriod = "1Y"
   }
 
+  const data = {
+    "ticker": stockSymbol,
+    "interval": interval,
+    "stockPeriod": stockPeriod
+ }
+
+ try {
+  const response = await axios.post(url, data, {
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
+  
+  return await response.data
+} catch (error) {
+  console.error('Error:', error);
+}
+};
+
+
+export const fetchPredData = async (
+  stockSymbol,
+  resolution,
+  from,
+  to
+) => {
+  const url = "http://127.0.0.1:8000/prediction"
+
+  let interval = "1d"
+  let stockPeriod = "1Y"
   const data = {
     "ticker": stockSymbol,
     "interval": interval,

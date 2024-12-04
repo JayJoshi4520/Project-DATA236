@@ -152,7 +152,7 @@ def getPrediction(stockInfo: GetLiveData):
 
     data = data.xs(key=stockInfo.ticker, level='Ticker', axis=1)['Close']
     data = pd.DataFrame(data)
-    model = keras.models.load_model(f'../data_230/StockModel/LSTM/model_{stockInfo.ticker}.keras')
+    model = keras.models.load_model(f'./data_230/StockModel/LSTM/model_{stockInfo.ticker}.keras')
     dataset = data.values
 
     training_data_len = int(np.ceil( len(dataset) * .95 ))

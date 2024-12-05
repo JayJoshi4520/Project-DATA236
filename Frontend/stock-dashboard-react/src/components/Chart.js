@@ -14,16 +14,18 @@ import StockContext from "../context/StockContext";
 import { fetchHistoricalData, fetchPredData } from "../utils/api/stock-api";
 import { createDate, convertDateToUnixTimestamp } from "../utils/helpers/date-helper";
 import { chartConfig } from "../constants/config";
+import PredDataContext from "../context/PredDataContext";
 
 const Chart = () => {
   const { darkMode } = useContext(ThemeContext);
   const { stockSymbol } = useContext(StockContext);
+  const { predData, setPredData } = useContext(PredDataContext);
   const [filter, setFilter] = useState(() => {
     const localStock = localStorage.getItem("graphFilter");
     return localStock || "1D";
   });
   const [data, setData] = useState([]);
-  const [predData, setPredData] = useState([]);
+  const [liverPredData, setLivePredData] = useState([]);
   const [showPrediction, setShowPrediction] = useState(() => {
     const localMode = localStorage.getItem("showPrediction");
     console.log(localMode);
@@ -35,6 +37,21 @@ const Chart = () => {
       value: parseFloat(item.open).toFixed(2),
       high: parseFloat(item.high).toFixed(2),
       close: parseFloat(item.close).toFixed(2),
+      date: filter === "1D"
+        ? new Date(item.date).toLocaleTimeString()
+        : new Date(item.date).toLocaleDateString(),
+    }));
+  };
+
+  const formatLivePredData = (liveData) => {
+    return liveData.map((item) => ({
+      value: parseFloat(item.open).toFixed(2),
+      high: parseFloat(item.high).toFixed(2),
+      close: parseFloat(item.close).toFixed(2),
+      lower_band: parseFloat(item.lower_band).toFixed(2),
+      upper_band: parseFloat(item.upper_band).toFixed(2),
+      ma_5: parseFloat(item.ma_5).toFixed(2),
+      ma_8: parseFloat(item.ma_8).toFixed(2),
       date: filter === "1D"
         ? new Date(item.date).toLocaleTimeString()
         : new Date(item.date).toLocaleDateString(),
@@ -70,6 +87,7 @@ const Chart = () => {
         if (showPrediction == "true") {
           const predictionResult = await fetchPredData(stockSymbol, resolution, startTimestampUnix, endTimestampUnix);
           setPredData(formatPredData(predictionResult.prediction));
+          setLivePredData(formatLivePredData(predictionResult.liveData))
         }
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -97,7 +115,7 @@ const Chart = () => {
         {showPrediction === "true" ? (
           <li key="single-item">
             <ChartFilter
-              text={filter} // Ensure `item` is properly defined in the context
+              text={filter}
               active={filter}
             />
           </li>

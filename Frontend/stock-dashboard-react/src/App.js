@@ -6,7 +6,7 @@ import StockContext from "./context/StockContext";
 import ThemeContext from "./context/ThemeContext";
 import Header from "./components/TopHeader";
 import Blog from "./pages/Blog";
-
+import { PredDataProvider } from "./context/PredDataContext";
 
 function App() {
   const [darkMode, setDarkMode] = useState(() => {
@@ -43,6 +43,7 @@ function App() {
   return (
     <ThemeContext.Provider value={{ darkMode, setDarkMode }}>
       <StockContext.Provider value={{ stockSymbol, setStockSymbol }}>
+        <PredDataProvider>
         <Header onPredictionChange={setShowPrediction}/>
         <BrowserRouter>
           <Routes>
@@ -50,6 +51,7 @@ function App() {
               <Route path="/blog" element={<Blog />} />
           </Routes>
         </BrowserRouter>
+        </PredDataProvider>
       </StockContext.Provider>
     </ThemeContext.Provider>
   );

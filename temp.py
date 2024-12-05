@@ -139,16 +139,42 @@ def getPrediction(stockInfo: GetLiveData):
         currDate = currDate - datetime.timedelta(days=365)
     formatted_date = currDate.strftime("%Y-%m-%d")
 
-
+    # Calculating Bollinger Band
     data = yf.download(stockInfo.ticker, start="2010-01-01", interval=stockInfo.interval, group_by=stockInfo.ticker)
     close_prices = data[stockInfo.ticker]['Close']  
     MA20 = close_prices.rolling(window=20).mean()
     std_dev = close_prices.rolling(window=20).std()
     upper_band = MA20 + (std_dev * 2)
     lower_band = MA20 - (std_dev * 2)
-    # Handle NaN values
     upper_band.fillna(method='bfill', inplace=True) 
     lower_band.fillna(method='bfill', inplace=True)
+
+    #Calculating RSI 
+    delta = data.diff()
+    gain = (delta.where(delta > 0, 0)).fillna(0)
+    loss = (-delta.where(delta < 0, 0)).fillna(0)
+
+
+    avg_gain = gain.rolling(window=14).mean()
+    avg_loss = loss.rolling(window=14).mean()
+    avg_gain.fillna(method='bfill', inplace=True) 
+    avg_loss.fillna(method='bfill', inplace=True)
+
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+
+
+    #Claculating Moving Average
+
+        # Selecting the 'Close' for all tickers
+    close_prices = pd.DataFrame(data[stockInfo.ticker]['Close'])
+
+    lags = [5, 8, 13]
+    for lag in lags:
+        close_prices[f'{lag}-day EMA'] = close_prices['Close'].ewm(span=lag).mean()
+
+    print(close_prices)
+
 
     data = data.xs(key=stockInfo.ticker, level='Ticker', axis=1)['Close']
     data = pd.DataFrame(data)
@@ -161,7 +187,6 @@ def getPrediction(stockInfo: GetLiveData):
     scaled_data = scaler.fit_transform(dataset)
     test_data = scaled_data[training_data_len - 60: , :]
     x_test = []
-    y_test = dataset[training_data_len:, :]
     for i in range(60, len(test_data)):
         x_test.append(test_data[i-60:i, 0])
 
@@ -181,6 +206,9 @@ def getPrediction(stockInfo: GetLiveData):
     data = yf.download(stockInfo.ticker, start="2010-01-01", interval=stockInfo.interval, group_by=stockInfo.ticker)
     data.loc[:, ('AAPL', 'Upper Band')] = upper_band
     data.loc[:, ('AAPL', 'Lower Band')] = lower_band
+    data.loc[:, ('AAPL', '5-D EMA')] = close_prices['5-day EMA']
+    data.loc[:, ('AAPL', '8-D EMA')] = close_prices['8-day EMA']
+    data.loc[:, ('AAPL', '13-D EMA')] = close_prices['13-day EMA']
     formatted_data = []
     for date, row in data[stockInfo.ticker].iterrows():
         entry = {
@@ -191,11 +219,26 @@ def getPrediction(stockInfo: GetLiveData):
             "close": row["Close"],
             "adjClose": row["Adj Close"],
             "lower_band": row["Lower Band"],
-            "upper_band": row["Upper Band"]
+            "upper_band": row["Upper Band"],
+            "ma_5": row["5-D EMA"],
+            "ma_8": row["8-D EMA"],
+            "ma_13": row["13-D EMA"],
         }
         formatted_data.append(entry)
+    rsi_data = []
+    for date, row in rsi[stockInfo.ticker].iterrows():
+        entry = {
+            "high": row["High"],
+            "volume": row["Volume"],
+            "open": row["Open"],
+            "low": row["Low"],
+            "close": row["Close"],
+            "adjClose": row["Adj Close"],
+        }
+        rsi_data.append(entry)
 
     return {
         "liveData": formatted_data,
-        "prediction" : result_array
+        "prediction" : result_array,
+        "rsi": rsi_data
     }

@@ -140,6 +140,13 @@ def getPrediction(stockInfo: GetLiveData):
     formatted_date = currDate.strftime("%Y-%m-%d")
 
     # Calculating Bollinger Band
+    while True:
+        try:
+            model = keras.models.load_model(f'./data_230/StockModel/LSTM/model_{stockInfo.ticker}.keras')
+            break
+        except:
+            model_training(stockInfo.ticker)
+            print("Error")
     data = yf.download(stockInfo.ticker, start="2010-01-01", interval=stockInfo.interval, group_by=stockInfo.ticker)
     close_prices = data[stockInfo.ticker]['Close']  
     MA20 = close_prices.rolling(window=20).mean()
@@ -173,12 +180,10 @@ def getPrediction(stockInfo: GetLiveData):
     for lag in lags:
         close_prices[f'{lag}-day EMA'] = close_prices['Close'].ewm(span=lag).mean()
 
-    print(close_prices)
 
 
     data = data.xs(key=stockInfo.ticker, level='Ticker', axis=1)['Close']
     data = pd.DataFrame(data)
-    model = keras.models.load_model(f'./data_230/StockModel/LSTM/model_{stockInfo.ticker}.keras')
     dataset = data.values
 
     training_data_len = int(np.ceil( len(dataset) * .95 ))
@@ -204,11 +209,11 @@ def getPrediction(stockInfo: GetLiveData):
     ]
 
     data = yf.download(stockInfo.ticker, start="2010-01-01", interval=stockInfo.interval, group_by=stockInfo.ticker)
-    data.loc[:, ('AAPL', 'Upper Band')] = upper_band
-    data.loc[:, ('AAPL', 'Lower Band')] = lower_band
-    data.loc[:, ('AAPL', '5-D EMA')] = close_prices['5-day EMA']
-    data.loc[:, ('AAPL', '8-D EMA')] = close_prices['8-day EMA']
-    data.loc[:, ('AAPL', '13-D EMA')] = close_prices['13-day EMA']
+    data.loc[:, (str(stockInfo.ticker), 'Upper Band')] = upper_band
+    data.loc[:, (str(stockInfo.ticker), 'Lower Band')] = lower_band
+    data.loc[:, (str(stockInfo.ticker), '5-D EMA')] = close_prices['5-day EMA']
+    data.loc[:, (str(stockInfo.ticker), '8-D EMA')] = close_prices['8-day EMA']
+    data.loc[:, (str(stockInfo.ticker), '13-D EMA')] = close_prices['13-day EMA']
     formatted_data = []
     for date, row in data[stockInfo.ticker].iterrows():
         entry = {
@@ -242,3 +247,98 @@ def getPrediction(stockInfo: GetLiveData):
         "prediction" : result_array,
         "rsi": rsi_data
     }
+
+
+
+def model_training(stock_ticker):
+
+    df = yf.download(stock_ticker, start="2010-01-01", interval="1d", group_by=stock_ticker)
+    # Create a new dataframe with only the 'Close column 
+    data = df.xs(key=stock_ticker, level='Ticker', axis=1)['Close']
+    data = pd.DataFrame(data)
+    dataset = data.values
+
+    # Get the number of rows to train the model on
+    training_data_len = int(np.ceil( len(dataset) * .95 ))
+
+    #Scaling Data Using MinMax Scaler
+    scaler = MinMaxScaler(feature_range=(0,1))
+    scaled_data = scaler.fit_transform(dataset)
+
+    # Create the training data set 
+    # Create the scaled training data set
+    train_data = scaled_data[0:int(training_data_len), :]
+
+
+    # Split the data into x_train and y_train data sets
+    x_train = []
+    y_train = []
+
+    for i in range(60, len(train_data)):
+        x_train.append(train_data[i-60:i, 0])
+        y_train.append(train_data[i, 0])
+        if i<= 61:
+            print(x_train)
+            print(y_train)
+            print()
+
+    x_train, y_train = np.array(x_train), np.array(y_train)
+
+    # Reshape the data
+    x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
+
+    model = Sequential()
+    model.add(LSTM(128, return_sequences=True, input_shape= (x_train.shape[1], 1)))
+    model.add(LSTM(64, return_sequences=False))
+    model.add(Dense(25))
+    model.add(Dense(1))
+
+    # Building the GRU model
+    GRU_MODEL = Sequential()
+    GRU_MODEL.add(GRU(128, input_shape=(x_train.shape[1], 1)))
+    GRU_MODEL.add(Dense(1, activation='sigmoid'))  # Output layer with sigmoid activation for binary classification
+
+    test_data = scaled_data[training_data_len - 60: , :]
+    # Create the data sets x_test and y_test
+    x_test = []
+    y_test = dataset[training_data_len:, :]
+    for i in range(60, len(test_data)):
+        x_test.append(test_data[i-60:i, 0])
+
+    # Convert the data to a numpy array
+    x_test = np.array(x_test)
+
+    # Reshape the data
+    x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1 ))
+    
+    
+    # Compile the model
+    model.compile(optimizer='adam', loss='mean_squared_error')
+
+    # Training LSTM(Long Short Term Memory - Neural Network) model
+    print(f"Training LSTM Model {stock_ticker}: \n")
+    model.fit(x_train, y_train, batch_size=128, epochs=30, validation_data = [x_test, y_test])
+    
+    model.summary()
+
+    
+    
+        # Compile the model
+    GRU_MODEL.compile(optimizer='adam', loss='mean_squared_error')
+
+    # Training GRU (Gated Recurrent Unit) Model
+    print(f"Training GRU Model {stock_ticker}: \n")
+    GRU_MODEL.fit(x_train, y_train, batch_size=128, epochs=30, validation_data = [x_test, y_test])
+
+    # Printing model summary
+    GRU_MODEL.summary()
+
+
+    # Get the models predicted price values 
+    LSTM_predictions = model.predict(x_test)
+    GRU_predictions = GRU_MODEL.predict(x_test)
+    LSTM_predictions = scaler.inverse_transform(LSTM_predictions)
+    GRU_predictions = scaler.inverse_transform(GRU_predictions)
+    
+    model.save(f'./data_230/StockModel/LSTM/model_{stock_ticker}.keras')
+    GRU_MODEL.save(f'./data_230/StockModel/GRU/model_{stock_ticker}.keras')

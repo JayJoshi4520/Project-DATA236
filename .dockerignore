@@ -1,0 +1,11 @@
+*.log
+*.csv
+*.json
+__pycache__/
+Dockerfile
+*.pyc
+*.pyo
+*.pyd
+Project-API/
+node_modules/
+data/ 

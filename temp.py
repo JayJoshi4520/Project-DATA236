@@ -20,10 +20,14 @@ import warnings
 import pandas as pd
 import numpy as np
 import asyncio
+import requests
 from fastapi.middleware.cors import CORSMiddleware
 
 
 app = FastAPI()
+
+
+
 
 # Add CORS middleware
 app.add_middleware(
@@ -36,8 +40,9 @@ app.add_middleware(
 
 class GetLiveData(BaseModel):
     ticker: str
-    interval: str
-    stockPeriod: str
+    timeframe: str
+    # interval: str
+    # stockPeriod: str
     
 class ModelTraining(BaseModel):
     ticker: str
@@ -320,14 +325,45 @@ class ModelTraining(BaseModel):
 #         print(f"Error: {str(e)}")
 #         return {"success": False, "message": str(e)}
 
+@app.post("/getTicker")
+def get_ticker(request: dict):
+    # Define the Yahoo Finance search URL
+    yfinance_url = "https://query2.finance.yahoo.com/v1/finance/search"
+    
+    # Set up headers and parameters for the request
+    user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
+    params = {
+        "q": request.get('companyName'),
+        "quotes_count": 1,
+        "country": "United States"
+    }
+    
+    # Make the GET request to Yahoo Finance
+    response = requests.get(url=yfinance_url, params=params, headers={'User-Agent': user_agent})
+    
+    # Parse the JSON response
+    data = response.json()
+    
+    # Extract and return the ticker symbol
+    try:
+        company_code = data['quotes'][0]['symbol']
+        return {
+            "ticker": company_code
+        }
+    except (KeyError, IndexError):
+        return None
+
+
+
+
 @app.post("/getlivedata")
 async def get_live_data(request: dict):
     try:
-        symbol = request.get('ticker', 'AAPL')
-        timeframe = request.get('timeframe', '1D')
+        symbol = request.get('ticker')
+        timeframe = request.get('timeframe')
         
         stock = yf.Ticker(symbol)
-        info = stock.info  
+        companyName = stock.info['longName']
         
         def format_market_cap(market_cap):
             if market_cap is None or market_cap == 0:
@@ -340,20 +376,6 @@ async def get_live_data(request: dict):
                 return f'${market_cap/1e6:.2f}M'
             return f'${market_cap:,.2f}'
 
-        # Get and format company information
-        company_info = {
-            "name": info.get('longName', symbol),
-            "ipoDate": info.get('startDate', 'N/A'),
-            "country": info.get('country', 'N/A'),
-            "marketCap": format_market_cap(info.get('marketCap')),
-            "currency": info.get('currency', 'USD'),
-            "industry": info.get('industry', 'N/A'),
-            "exchange": info.get('exchange', 'N/A'),
-            "sector": info.get('sector', 'N/A')
-        }
-
-        # Print for debugging
-        print(f"Company Info for {symbol}:", company_info)
         
         # Get historical data
         timeframe_params = {
@@ -363,7 +385,7 @@ async def get_live_data(request: dict):
             '1Y': ('1y', '1d')
         }
         
-        period, interval = timeframe_params.get(timeframe, ('1d', '1m'))
+        period, interval = timeframe_params.get(timeframe)
         hist = stock.history(period=period, interval=interval)
         
         if hist.empty:
@@ -376,7 +398,7 @@ async def get_live_data(request: dict):
         live_data = []
         for index, row in hist.iterrows():
             live_data.append({
-                'date': index.strftime('%Y-%m-%d %H:%M:%S'),
+                'date': int(pd.Timestamp(index).timestamp()),
                 'close': float(row['Close']),
                 'volume': int(row['Volume']),
                 'high': float(row['High']),
@@ -387,15 +409,17 @@ async def get_live_data(request: dict):
         current_price = float(hist['Close'].iloc[-1])
         prev_close = float(hist['Close'].iloc[0])
         change = ((current_price - prev_close) / prev_close) * 100
+        if symbol == "TSLA":
+            print(current_price)
         
         return {
             "success": True,
+            "company": companyName,
             "symbol": symbol,
             "currentPrice": current_price,
             "change": change,
             "liveData": live_data,
             "timeframe": timeframe,
-            "stockInfo": company_info
         }
         
     except Exception as e:
@@ -440,54 +464,35 @@ async def websocket_endpoint(websocket: WebSocket, symbol: str):
 
 @app.post("/prediction")
 def getPrediction(stockInfo: GetLiveData):
-    currDate = datetime.datetime.now()
-    weekday_of_toay = datetime.datetime.today().weekday()
-    if stockInfo.interval == "1m" and stockInfo.stockPeriod == "1D": 
-        if  weekday_of_toay == 5:  # Saturday
-            currDate = currDate - datetime.timedelta(days=1)
-        elif weekday_of_toay == 6:  # Sunday
-            currDate = currDate - datetime.timedelta(days=2)
-    elif stockInfo.interval == "1d" and stockInfo.stockPeriod == "1Y":
-        currDate = currDate - datetime.timedelta(days=365)
-    elif stockInfo.interval == "1wk" and stockInfo.stockPeriod == "1M":
-        currDate = currDate - datetime.timedelta(days=30)
-    elif stockInfo.interval == "1mo" and stockInfo.stockPeriod == "1Y":
-        currDate = currDate - datetime.timedelta(days=365)
-    formatted_date = currDate.strftime("%Y-%m-%d")
-
+    stock = yf.Ticker(stockInfo.ticker)
+    companyName = stock.info['longName']
+    timeframe_params = {
+            '1D': ('1d', '1m'),
+            '1W': ('5d', '15m'),
+            '1M': ('1mo', '1h'),
+            '1Y': ('1y', '1d')
+        }
+    
+    print(stockInfo.ticker, stockInfo.timeframe)
+    period, interval = timeframe_params.get(stockInfo.timeframe)
     model = keras.models.load_model(f'./data_230/StockModel/LSTM/model_{stockInfo.ticker}.keras')
 
-    data = yf.download(stockInfo.ticker, start="2010-01-01", interval=stockInfo.interval, group_by=stockInfo.ticker)
-    close_prices = data[stockInfo.ticker]['Close']  
-    MA20 = close_prices.rolling(window=20).mean()
-    std_dev = close_prices.rolling(window=20).std()
-    upper_band = MA20 + (std_dev * 2)
-    lower_band = MA20 - (std_dev * 2)
-    upper_band.fillna(method='bfill', inplace=True) 
-    lower_band.fillna(method='bfill', inplace=True)
+    data = yf.download(stockInfo.ticker, start="2019-01-01", interval=interval, group_by=stockInfo.ticker)
 
-    #Calculating RSI 
-    delta = data.diff()
-    gain = (delta.where(delta > 0, 0)).fillna(0)
-    loss = (-delta.where(delta < 0, 0)).fillna(0)
-
-
-    avg_gain = gain.rolling(window=14).mean()
-    avg_loss = loss.rolling(window=14).mean()
-    avg_gain.fillna(method='bfill', inplace=True) 
-    avg_loss.fillna(method='bfill', inplace=True)
-
-    rs = avg_gain / avg_loss
-    rsi = 100 - (100 / (1 + rs))
-
-
-    close_prices = pd.DataFrame(data[stockInfo.ticker]['Close'])
-
-    lags = [5, 8, 13]
-    for lag in lags:
-        close_prices[f'{lag}-day EMA'] = close_prices['Close'].ewm(span=lag).mean()
-
-
+    formatted_data = []
+    for date, row in data[stockInfo.ticker].iterrows():
+        timestamp_obj = pd.Timestamp(date)
+        unix_timestamp = int(timestamp_obj.timestamp())
+        entry = {
+            "date" : unix_timestamp,
+            "high": row["High"],
+            "volume": row["Volume"],
+            "open": row["Open"],
+            "low": row["Low"],
+            "close": row["Close"],
+            "adjClose": row["Adj Close"],
+        }
+        formatted_data.append(entry)
 
     data = data.xs(key=stockInfo.ticker, level='Ticker', axis=1)['Close']
     data = pd.DataFrame(data)
@@ -511,64 +516,26 @@ def getPrediction(stockInfo: GetLiveData):
     valid = data[training_data_len:]
     valid['LSTM_Predictions'] = LSTM_predictions
     result_array = [
-    {"date": date.strftime('%Y-%m-%d'), "prediction": prediction}
+    {"date": int(pd.Timestamp(date).timestamp()), "prediction": prediction}
     for date, prediction in zip(valid.index, valid.iloc[:, 0])
     ]
-
-    data = yf.download(stockInfo.ticker, start="2010-01-01", interval=stockInfo.interval, group_by=stockInfo.ticker)
-    data.loc[:, (str(stockInfo.ticker), 'Upper Band')] = upper_band
-    data.loc[:, (str(stockInfo.ticker), 'Lower Band')] = lower_band
-    data.loc[:, (str(stockInfo.ticker), '5-D EMA')] = close_prices['5-day EMA']
-    data.loc[:, (str(stockInfo.ticker), '8-D EMA')] = close_prices['8-day EMA']
-    data.loc[:, (str(stockInfo.ticker), '13-D EMA')] = close_prices['13-day EMA']
-    formatted_data = []
-    for date, row in data[stockInfo.ticker].iterrows():
-        entry = {
-            "high": row["High"],
-            "volume": row["Volume"],
-            "open": row["Open"],
-            "low": row["Low"],
-            "close": row["Close"],
-            "adjClose": row["Adj Close"],
-            "lower_band": row["Lower Band"],
-            "upper_band": row["Upper Band"],
-            "ma_5": row["5-D EMA"],
-            "ma_8": row["8-D EMA"],
-            "ma_13": row["13-D EMA"],
-        }
-        formatted_data.append(entry)
-    rsi_data = []
-    for date, row in rsi[stockInfo.ticker].iterrows():
-        entry = {
-            "high": row["High"],
-            "volume": row["Volume"],
-            "open": row["Open"],
-            "low": row["Low"],
-            "close": row["Close"],
-            "adjClose": row["Adj Close"],
-        }
-        rsi_data.append(entry)
-
     return {
+        "company":companyName,
         "liveData": formatted_data,
         "prediction" : result_array,
-        "rsi": rsi_data
     }
 
 
 @app.post("/training")
 def model_training(stock_ticker: ModelTraining):
-
-    df = yf.download(stock_ticker.ticker, start="2010-01-01", interval="1d", group_by=stock_ticker.ticker)
+    df = yf.download(stock_ticker.ticker, start="2019-01-01", interval="1d", group_by=stock_ticker.ticker)
     # Create a new dataframe with only the 'Close column 
     data = df.xs(key=stock_ticker.ticker, level='Ticker', axis=1)['Close']
     data = pd.DataFrame(data)
     dataset = data.values
 
-    # Get the number of rows to train the model on
     training_data_len = int(np.ceil( len(dataset) * .95 ))
 
-    #Scaling Data Using MinMax Scaler
     scaler = MinMaxScaler(feature_range=(0,1))
     scaled_data = scaler.fit_transform(dataset)
 
@@ -600,11 +567,6 @@ def model_training(stock_ticker: ModelTraining):
     model.add(Dense(25))
     model.add(Dense(1))
 
-    # Building the GRU model
-    GRU_MODEL = Sequential()
-    GRU_MODEL.add(GRU(128, input_shape=(x_train.shape[1], 1)))
-    GRU_MODEL.add(Dense(1, activation='sigmoid'))  # Output layer with sigmoid activation for binary classification
-
     test_data = scaled_data[training_data_len - 60: , :]
     # Create the data sets x_test and y_test
     x_test = []
@@ -624,28 +586,16 @@ def model_training(stock_ticker: ModelTraining):
 
     # Training LSTM(Long Short Term Memory - Neural Network) model
     print(f"Training LSTM Model {stock_ticker}: \n")
-    model.fit(x_train, y_train, batch_size=128, epochs=30, validation_data = [x_test, y_test])
+    model.fit(x_train, y_train, batch_size=128, epochs=20, validation_data = [x_test, y_test])
     
     model.summary()
 
-    
-    
-        # Compile the model
-    GRU_MODEL.compile(optimizer='adam', loss='mean_squared_error')
-
-    # Training GRU (Gated Recurrent Unit) Model
-    print(f"Training GRU Model {stock_ticker}: \n")
-    GRU_MODEL.fit(x_train, y_train, batch_size=128, epochs=30, validation_data = [x_test, y_test])
-
-    # Printing model summary
-    GRU_MODEL.summary()
-
-
     # Get the models predicted price values 
     LSTM_predictions = model.predict(x_test)
-    GRU_predictions = GRU_MODEL.predict(x_test)
     LSTM_predictions = scaler.inverse_transform(LSTM_predictions)
-    GRU_predictions = scaler.inverse_transform(GRU_predictions)
     
     model.save(f'./data_230/StockModel/LSTM/model_{stock_ticker.ticker}.keras')
+    return {
+        "status": True
+    }
 

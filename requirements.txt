@@ -8,3 +8,4 @@ seaborn
 scikit-learn
 tensorflow
 gunicorn
+TA-Lib  

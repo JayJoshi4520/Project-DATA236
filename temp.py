@@ -22,6 +22,7 @@ import numpy as np
 import asyncio
 import requests
 from fastapi.middleware.cors import CORSMiddleware
+import talib
 
 
 app = FastAPI()
@@ -46,284 +47,6 @@ class GetLiveData(BaseModel):
     
 class ModelTraining(BaseModel):
     ticker: str
-
-# @app.post("/getlivedata")
-# async def get_live_data(request: dict):
-#     try:
-#         symbol = request.get('ticker', 'AAPL')
-#         timeframe = request.get('timeframe', '1D')
-        
-#         stock = yf.Ticker(symbol)
-        
-#         # Define timeframe parameters
-#         timeframe_params = {
-#             '1D': ('1d', '1m'),
-#             '1W': ('5d', '15m'),
-#             '1M': ('1mo', '1h'),
-#             '1Y': ('1y', '1d')
-#         }
-        
-#         period, interval = timeframe_params.get(timeframe, ('1d', '1m'))
-        
-#         # Get historical data
-#         hist = stock.history(period=period, interval=interval)
-        
-#         if hist.empty:
-#             return {
-#                 "success": False,
-#                 "message": "No data available"
-#             }
-        
-#         # Format the data
-#         live_data = []
-#         for index, row in hist.iterrows():
-#             live_data.append({
-#                 'date': index.strftime('%Y-%m-%d %H:%M:%S'),
-#                 'close': float(row['Close']),
-#                 'volume': int(row['Volume']),
-#                 'high': float(row['High']),
-#                 'low': float(row['Low']),
-#                 'open': float(row['Open'])
-#             })
-        
-#         # Get current price and calculate change
-#         current_price = float(hist['Close'].iloc[-1])
-#         prev_close = float(hist['Close'].iloc[0])
-#         change = ((current_price - prev_close) / prev_close) * 100
-        
-#         return {
-#             "success": True,
-#             "symbol": symbol,
-#             "currentPrice": current_price,
-#             "change": change,
-#             "liveData": live_data,
-#             "timeframe": timeframe
-#         }
-        
-#     except Exception as e:
-#         print(f"Error: {str(e)}")
-#         return {"success": False, "message": str(e)}
-
-# @app.post("/getlivedata")
-# async def get_live_data(request: dict):
-#     try:
-#         symbol = request.get('ticker', 'AAPL')
-#         timeframe = request.get('timeframe', '1D')
-        
-#         stock = yf.Ticker(symbol)
-        
-#         # Define timeframe parameters
-#         timeframe_params = {
-#             '1D': ('1d', '1m'),
-#             '1W': ('5d', '15m'),  # Changed from '1wk' to '5d'
-#             '1M': ('1mo', '1h'),
-#             '1Y': ('1y', '1d')
-#         }
-        
-#         period, interval = timeframe_params.get(timeframe, ('1d', '1m'))
-        
-#         # Get historical data
-#         hist = stock.history(period=period, interval=interval)
-        
-#         if hist.empty:
-#             return {
-#                 "success": False,
-#                 "message": "No data available"
-#             }
-        
-#         # Format the data and remove duplicates
-#         live_data = []
-#         seen_dates = set()
-        
-#         for index, row in hist.iterrows():
-#             # For 1W view, use date only (without time) as the key
-#             if timeframe == '1W':
-#                 date_key = index.strftime('%Y-%m-%d')
-#                 if date_key not in seen_dates:
-#                     seen_dates.add(date_key)
-#                     live_data.append({
-#                         'date': index.strftime('%Y-%m-%d %H:%M:%S'),
-#                         'close': float(row['Close']),
-#                         'volume': int(row['Volume']),
-#                         'high': float(row['High']),
-#                         'low': float(row['Low']),
-#                         'open': float(row['Open'])
-#                     })
-#             else:
-#                 live_data.append({
-#                     'date': index.strftime('%Y-%m-%d %H:%M:%S'),
-#                     'close': float(row['Close']),
-#                     'volume': int(row['Volume']),
-#                     'high': float(row['High']),
-#                     'low': float(row['Low']),
-#                     'open': float(row['Open'])
-#                 })
-        
-#         # Get current price and calculate change
-#         current_price = float(hist['Close'].iloc[-1])
-#         prev_close = float(hist['Close'].iloc[0])
-#         change = ((current_price - prev_close) / prev_close) * 100
-        
-#         return {
-#             "success": True,
-#             "symbol": symbol,
-#             "currentPrice": current_price,
-#             "change": change,
-#             "liveData": live_data,
-#             "timeframe": timeframe
-#         }
-        
-#     except Exception as e:
-#         print(f"Error: {str(e)}")
-#         return {"success": False, "message": str(e)}
-
-# @app.post("/getlivedata")
-# async def get_live_data(request: dict):
-#     try:
-#         symbol = request.get('ticker', 'AAPL')
-#         timeframe = request.get('timeframe', '1D')
-        
-#         # Map META to its actual ticker symbol if needed
-#         if symbol == 'META':
-#             symbol = 'META'  # META is now the correct symbol, previously it was FB
-            
-#         stock = yf.Ticker(symbol)
-        
-#         # Define timeframe parameters
-#         timeframe_params = {
-#             '1D': ('1d', '1m'),
-#             '1W': ('5d', '15m'),
-#             '1M': ('1mo', '1h'),
-#             '1Y': ('1y', '1d')
-#         }
-        
-#         period, interval = timeframe_params.get(timeframe, ('1d', '1m'))
-        
-#         # Get historical data
-#         hist = stock.history(period=period, interval=interval)
-        
-#         if hist.empty:
-#             return {
-#                 "success": False,
-#                 "message": "No data available"
-#             }
-        
-#         # Format the data
-#         live_data = []
-#         for index, row in hist.iterrows():
-#             live_data.append({
-#                 'date': index.strftime('%Y-%m-%d %H:%M:%S'),
-#                 'close': float(row['Close']),
-#                 'volume': int(row['Volume']),
-#                 'high': float(row['High']),
-#                 'low': float(row['Low']),
-#                 'open': float(row['Open'])
-#             })
-        
-#         # Get current price and calculate change
-#         current_price = float(hist['Close'].iloc[-1])
-#         prev_close = float(hist['Close'].iloc[0])
-#         change = ((current_price - prev_close) / prev_close) * 100
-        
-#         return {
-#             "success": True,
-#             "symbol": symbol,
-#             "currentPrice": current_price,
-#             "change": change,
-#             "liveData": live_data,
-#             "timeframe": timeframe
-#         }
-        
-#     except Exception as e:
-#         print(f"Error: {str(e)}")
-#         return {"success": False, "message": str(e)}
-
-# @app.post("/getlivedata")
-# async def get_live_data(request: dict):
-#     try:
-#         symbol = request.get('ticker', 'AAPL')
-#         timeframe = request.get('timeframe', '1D')
-        
-#         stock = yf.Ticker(symbol)
-#         info = stock.info  # Get detailed stock information
-        
-#         # Format market cap to be readable
-#         def format_market_cap(market_cap):
-#             if market_cap is None:
-#                 return 'N/A'
-#             if market_cap >= 1e12:
-#                 return f'${market_cap/1e12:.2f}T'
-#             if market_cap >= 1e9:
-#                 return f'${market_cap/1e9:.2f}B'
-#             if market_cap >= 1e6:
-#                 return f'${market_cap/1e6:.2f}M'
-#             return f'${market_cap:,.2f}'
-
-#         # Get IPO date in a readable format
-#         ipo_date = info.get('firstTradingDate')
-#         if ipo_date:
-#             from datetime import datetime
-#             ipo_date = datetime.fromtimestamp(ipo_date).strftime('%Y-%m-%d')
-        
-#         # Get historical data for chart
-#         timeframe_params = {
-#             '1D': ('1d', '1m'),
-#             '1W': ('5d', '15m'),
-#             '1M': ('1mo', '1h'),
-#             '1Y': ('1y', '1d')
-#         }
-        
-#         period, interval = timeframe_params.get(timeframe, ('1d', '1m'))
-#         hist = stock.history(period=period, interval=interval)
-        
-#         if hist.empty:
-#             return {
-#                 "success": False,
-#                 "message": "No data available"
-#             }
-        
-#         # Format the data
-#         live_data = []
-#         for index, row in hist.iterrows():
-#             live_data.append({
-#                 'date': index.strftime('%Y-%m-%d %H:%M:%S'),
-#                 'close': float(row['Close']),
-#                 'volume': int(row['Volume']),
-#                 'high': float(row['High']),
-#                 'low': float(row['Low']),
-#                 'open': float(row['Open'])
-#             })
-        
-#         # Calculate current price and change
-#         current_price = float(hist['Close'].iloc[-1])
-#         prev_close = float(hist['Close'].iloc[0])
-#         change = ((current_price - prev_close) / prev_close) * 100
-        
-#         return {
-#             "success": True,
-#             "symbol": symbol,
-#             "currentPrice": current_price,
-#             "change": change,
-#             "liveData": live_data,
-#             "timeframe": timeframe,
-#             # Add detailed stock information
-#             "stockInfo": {
-#                 "name": info.get('longName', symbol),
-#                 "ipoDate": ipo_date or 'N/A',
-#                 "country": info.get('country', 'N/A'),
-#                 "marketCap": format_market_cap(info.get('marketCap')),
-#                 "currency": info.get('currency', 'USD'),
-#                 "industry": info.get('industry', 'N/A'),
-#                 "sector": info.get('sector', 'N/A'),
-#                 "exchange": info.get('exchange', 'N/A'),
-#                 "website": info.get('website', 'N/A'),
-#                 "longBusinessSummary": info.get('longBusinessSummary', 'N/A')
-#             }
-#         }
-        
-#     except Exception as e:
-#         print(f"Error: {str(e)}")
-#         return {"success": False, "message": str(e)}
 
 @app.post("/getTicker")
 def get_ticker(request: dict):
@@ -593,9 +316,172 @@ def model_training(stock_ticker: ModelTraining):
     # Get the models predicted price values 
     LSTM_predictions = model.predict(x_test)
     LSTM_predictions = scaler.inverse_transform(LSTM_predictions)
+    print(model.summary())
     
     model.save(f'./data_230/StockModel/LSTM/model_{stock_ticker.ticker}.keras')
     return {
         "status": True
     }
 
+
+@app.post("/predictionOnTechnical")
+def get_prediction_on_technical(stockInfo: GetLiveData):
+        print(stockInfo.ticker, stockInfo.timeframe)
+        
+        stock = yf.Ticker(stockInfo.ticker)
+        companyName = stock.info['longName']
+        timeframe_params = {
+            '1D': ('1d', '1m'),
+            '1W': ('5d', '15m'),
+            '1M': ('1mo', '1h'),
+            '1Y': ('1y', '1d')
+        }
+    
+        print(stockInfo.ticker, stockInfo.timeframe)
+        period, interval = timeframe_params.get(stockInfo.timeframe)
+        
+        model = keras.models.load_model(f'./data_230/StockModel/LSTM/model_{stockInfo.ticker}.keras')
+
+
+        data = yf.download(stockInfo.ticker, period=period, interval=interval, group_by=stockInfo.ticker)
+        if data.empty:
+            return {"success": False, "message": "No data available for the given ticker and timeframe."}
+
+        formatted_data = []
+        for date, row in data[stockInfo.ticker].iterrows():
+            timestamp_obj = pd.Timestamp(date)
+            unix_timestamp = int(timestamp_obj.timestamp())
+            entry = {
+                "date" : unix_timestamp,
+                "high": row["High"],
+                "volume": row["Volume"],
+                "open": row["Open"],
+                "low": row["Low"],
+                "close": row["Close"],
+                "adjClose": row["Adj Close"],
+            }
+            formatted_data.append(entry)
+        
+        data = stock.history(period=period, interval=interval)
+
+        df = data[['Close']].copy()
+        close_array = df['Close'].to_numpy(dtype=np.float64).flatten()
+
+        df['MA20'] = df['Close'].rolling(window=20).mean()
+        bb_upper, bb_middle, bb_lower = talib.BBANDS(
+            close_array, timeperiod=20, nbdevup=2, nbdevdn=2, matype=0
+        )
+        df['BB_upper'] = bb_upper
+        df['BB_lower'] = bb_lower
+        df['RSI'] = talib.RSI(close_array, timeperiod=14)
+        df.dropna(inplace=True)
+
+        data_features = df[['Close', 'MA20', 'BB_upper', 'BB_lower', 'RSI']].values
+        
+        scaler = MinMaxScaler(feature_range=(0, 1))
+        scaled_data = scaler.fit_transform(data_features)
+
+        # Create sequences
+        sequence_length = 60
+        x_test = []
+        for i in range(len(scaled_data) - sequence_length):
+            x_test.append(scaled_data[i:(i + sequence_length)])
+        
+        x_test = np.array(x_test)
+        
+        # Verify shapes
+        print(f"Model input shape: {model.input_shape}")
+        print(f"X test shape: {x_test.shape}")
+        
+        # Make predictions
+        predictions = model.predict(x_test)
+        predictions = predictions.reshape(-1, 1)
+        
+        # Prepare for inverse transform
+        padded_predictions = np.zeros((len(predictions), data_features.shape[1]))
+        padded_predictions[:, 0] = predictions[:, 0]
+        
+        # Inverse transform
+        predictions = scaler.inverse_transform(padded_predictions)[:, 0]
+        
+        # Get corresponding dates
+        prediction_dates = df.index[sequence_length:sequence_length + len(predictions)]
+        
+        # Create result array
+        result_array = [
+            {"date": int(pd.Timestamp(date).timestamp()), "prediction": float(pred)}
+            for date, pred in zip(prediction_dates, predictions)
+        ]
+
+        return {
+        "company":companyName,
+        "liveData": formatted_data,
+        "prediction" : result_array,
+        }
+
+
+
+
+@app.post("/trainingOnTechnical")
+def model_training_with_indicators(stock_ticker: ModelTraining):
+    # Download stock data
+    data = yf.download(stock_ticker.ticker, start="2015-01-01", interval="1d", group_by=stock_ticker.ticker)
+    df = data.xs(key=stock_ticker.ticker, level='Ticker', axis=1)['Close']
+    df = pd.DataFrame(df)
+    close_prices = df['Close'].to_numpy()  # Convert to numpy array
+
+    # Calculate Moving Average (20 Days)
+    df['MA20'] = df['Close'].rolling(window=20).mean()
+
+    # Calculate Bollinger Bands using numpy array
+    bb_upper, bb_middle, bb_lower = talib.BBANDS(
+        close_prices, timeperiod=20, nbdevup=2, nbdevdn=2, matype=0
+    )
+    df['BB_upper'] = bb_upper
+    df['BB_middle'] = bb_middle
+    df['BB_lower'] = bb_lower
+
+    # Calculate RSI using numpy array
+    df['RSI'] = talib.RSI(close_prices, timeperiod=14)
+    
+    # Drop NaN values caused by rolling calculations
+    df.dropna(inplace=True)
+    
+    # Prepare the data for training
+    data = df[['Close', 'MA20', 'BB_upper', 'BB_lower', 'RSI']].copy()
+    dataset = data.values
+
+    # Split the dataset into training and test sets
+    training_data_len = int(np.ceil(len(dataset) * 0.95))
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    scaled_data = scaler.fit_transform(dataset)
+
+    # Prepare training data
+    train_data = scaled_data[:training_data_len]
+    x_train, y_train = [], []
+    for i in range(60, len(train_data)):
+        x_train.append(train_data[i - 60:i])  # Include 60 past steps with indicators
+        y_train.append(train_data[i, 0])  # Predict the closing price
+    x_train, y_train = np.array(x_train), np.array(y_train)
+
+    # Prepare test data
+    test_data = scaled_data[training_data_len - 60:]
+    x_test, y_test = [], dataset[training_data_len:, 0]
+    for i in range(60, len(test_data)):
+        x_test.append(test_data[i - 60:i])
+    x_test = np.array(x_test)
+
+    # Build LSTM model
+    model = Sequential()
+    model.add(LSTM(128, return_sequences=True, input_shape=(x_train.shape[1], x_train.shape[2])))
+    model.add(LSTM(64, return_sequences=False))
+    model.add(Dense(25))
+    model.add(Dense(1))
+    
+    # Compile and train the model
+    model.compile(optimizer='adam', loss='mean_squared_error')
+    model.fit(x_train, y_train, batch_size=128, epochs=20, validation_data=(x_test, y_test))
+    print(model.summary())
+    # Save the trained model
+    model.save(f'./data_230/StockModel/LSTM/model_{stock_ticker.ticker}.keras')
+    return {"status": True}

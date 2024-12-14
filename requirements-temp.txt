@@ -1,0 +1,11 @@
+# fastapi
+# pydantic
+# yfinance
+# pandas
+# numpy
+# matplotlib
+# seaborn
+# scikit-learn
+# tensorflow
+# gunicorn
+# TA-Lib  

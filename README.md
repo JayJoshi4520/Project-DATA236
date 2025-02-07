@@ -15,13 +15,6 @@
 1. ```fastapi dev temp.py```
 
 ## Start the Front-End
-1. ```cd Frontend```
-2. ```npm install```
-3. ```npm start```
-
-## Create .env file.
-- Get your Free Finnhub API key from [Finnhub.io](https://finnhub.io/)
-- Create ```.env``` file in ```Project-DATA236/Frontend``` directory.
-- Add REACT_APP_API_KEY = 'YOUR FINHUB API KEY'
+- For Front-End refer ```https://github.com/JayJoshi4520/Project-DATA236-Final.git```
 
 
